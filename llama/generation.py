@@ -308,6 +308,7 @@ class Llama:
         prompt_tokens = [
             self.formatter.encode_dialog_prompt(dialog) for dialog in dialogs
         ]
+        time0 = time.perf_counter()
         generation_tokens, generation_logprobs = self.generate(
             prompt_tokens=prompt_tokens,
             max_gen_len=max_gen_len,
@@ -315,6 +316,7 @@ class Llama:
             top_p=top_p,
             logprobs=logprobs,
         )
+        time_gen = time.perf_counter() - time0
         if logprobs:
             return [
                 {
@@ -324,6 +326,8 @@ class Llama:
                     },
                     "tokens": [self.tokenizer.decode([x]) for x in t],
                     "logprobs": logprobs_i,
+                    "tokens_count": len(t),
+                    "time_gen": time_gen,
                 }
                 for t, logprobs_i in zip(generation_tokens, generation_logprobs)
             ]
@@ -333,6 +337,8 @@ class Llama:
                     "role": "assistant",
                     "content": self.tokenizer.decode(t),
                 },
+                "tokens_count": len(t),
+                "time_gen": time_gen,
             }
             for t in generation_tokens
         ]

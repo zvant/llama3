@@ -91,7 +91,7 @@ def main(
 
     phrase_quit, phrase_new, phrase_text, phrase_pdf, phrase_url = "#QUIT", "#NEW", "#TEXT", "#PDF", "#URL"
     preset = [
-        {"role": "system", "content": "Think carefully before answering. Give straightforward and concise answers. If you do not know the answer, say I do not know."}
+        {"role": "system", "content": "Think in steps before answering. Give straightforward and concise answers. If you do not know the answer, reply with I do not know."}
     ]
     print("stop inference server:  %s" % phrase_quit)
     print("start new conversation: %s" % phrase_new)
@@ -103,6 +103,7 @@ def main(
         torch.cuda.empty_cache()
         print("============== start new 🦙 conversation ==============")
         context = copy.deepcopy(preset)
+        context[0]["content"] += ' Now is %s.' % time.strftime('%H:%M %Z, %A, %Y %b %d')
         while True:
             query = str(input("🗣️ > ")).strip()
             if len(query) < 1:
@@ -138,23 +139,21 @@ def main(
             context.append({"role": "user", "content": query})
 
             try:
-                t = time.perf_counter()
                 reply = generator.chat_completion(
                     [context],
                     max_gen_len=max_gen_len,
                     temperature=temperature,
                     top_p=top_p,
                 )[0]
-                t = time.perf_counter() - t
             except Exception as e:
                 print("🛑 > exception: %s, rolling back" % str(e))
                 context.pop(-1)
                 continue
 
-            assert "generation" in reply
+            tokens_count, time_gen = reply["tokens_count"], reply["time_gen"]
             reply = reply["generation"]
             assert reply["role"] == "assistant"
-            print("🦙 > %s [%.2f seconds]" % (reply["content"], t))
+            print("🦙 > %s [%d/%.2f = %.2f tokens/s]" % (reply["content"], tokens_count, time_gen, tokens_count / time_gen))
             context.append(reply)
 
 
